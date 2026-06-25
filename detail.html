@@ -118,6 +118,12 @@
             min-height: 550px;
         }
 
+        .detail-card.no-image {
+            grid-template-columns: 1fr;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
         @media (max-width: 900px) {
             .detail-card {
                 grid-template-columns: 1fr;
@@ -528,12 +534,18 @@
                 `;
             }
 
+            const hasImage = !!event.image;
+            const cardClass = hasImage ? "detail-card" : "detail-card no-image";
+            const imageHtml = hasImage ? `
+                <div class="image-side">
+                    <img class="event-image" src="${event.image}" alt="${escapeHtml(event.title)}">
+                    <div class="image-overlay"></div>
+                </div>
+            ` : "";
+
             mainContainer.innerHTML = `
-                <div class="detail-card">
-                    <div class="image-side">
-                        <img class="event-image" src="${event.image}" alt="${escapeHtml(event.title)}">
-                        <div class="image-overlay"></div>
-                    </div>
+                <div class="${cardClass}">
+                    ${imageHtml}
                     
                     <div class="content-side">
                         <div class="event-meta">

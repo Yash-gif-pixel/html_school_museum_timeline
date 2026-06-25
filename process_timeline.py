@@ -1,7 +1,6 @@
 import json
 import urllib.request
 import os
-import time
 
 API_URL = "https://staticapis.pragament.com/lms/cbse/topic-timeline.json"
 OUTPUT_FILE = "events_data.json"
@@ -29,29 +28,14 @@ GRADE_COLORS = {
     "Grade 10": "#e91e63"
 }
 
-# The 5 custom AI images generated earlier
+# The 5 custom AI images generated from content-based prompts
 CUSTOM_IMAGES = {
     10: ("images/discovery_of_fire.png", True),
     13: ("images/bhimbetka_cave_art.png", True),
     14: ("images/invention_of_wheel.png", True),
     19: ("images/great_bath_mohenjodaro.png", True),
-    61: ("images/gutenberg_press.png", True)
+    55: ("images/gutenberg_press.png", True)
 }
-
-def download_image(url, filepath):
-    """Helper to download a file from a URL to local path"""
-    try:
-        req = urllib.request.Request(
-            url, 
-            headers={'User-Agent': 'Mozilla/5.0'}
-        )
-        with urllib.request.urlopen(req, timeout=10) as response:
-            with open(filepath, 'wb') as f:
-                f.write(response.read())
-        return True
-    except Exception as e:
-        print(f"Failed to download {url} to {filepath}: {e}")
-        return False
 
 def main():
     print(f"Fetching timeline data from {API_URL}...")
@@ -68,12 +52,9 @@ def main():
             print("Error: No subtopics found in the timeline JSON.")
             return
 
-        if not os.path.exists(IMAGES_DIR):
-            os.makedirs(IMAGES_DIR)
-
         processed_events = []
         total_subtopics = len(subtopics)
-        print(f"Found {total_subtopics} events. Checking/downloading unique local images...")
+        print(f"Processing {total_subtopics} events...")
 
         for index, item in enumerate(subtopics):
             event_id = index + 1
@@ -98,22 +79,12 @@ def main():
             # Determine Color
             color = ERA_COLORS.get(chapter_name) or GRADE_COLORS.get(grade) or "#ff9800"
 
-            # Check if this is a custom image event
+            # Check if this is a custom content-based AI image event
             if event_id in CUSTOM_IMAGES:
                 img_src, is_ai = CUSTOM_IMAGES[event_id]
             else:
-                local_filename = f"event_{event_id}.jpg"
-                img_src = os.path.join(IMAGES_DIR, local_filename).replace('\\', '/')
+                img_src = None
                 is_ai = False
-                
-                # Download if not already cached
-                if not os.path.exists(img_src):
-                    picsum_url = f"https://picsum.photos/600/400?random={event_id}"
-                    print(f"[{event_id}/{total_subtopics}] Downloading unique image: {picsum_url} -> {img_src}")
-                    success = download_image(picsum_url, img_src)
-                    if not success:
-                        img_src = "images/history_fallback.png"
-                    time.sleep(0.05)
             
             event = {
                 "id": event_id,

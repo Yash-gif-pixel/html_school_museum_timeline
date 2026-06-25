@@ -97,11 +97,13 @@ function renderTimelineView(filterGrade = "all", searchTerm = "") {
         const causePreview = topic.cause_effect.substring(0, 100);
 
         let imageHtml = "";
+        if (topic.image) {
             imageHtml = `
                 <div class="card-image-container">
                     <img class="card-image" src="${topic.image}" alt="${escapeHtml(topic.title)}">
                 </div>
             `;
+        }
 
         html += `
             <div class="timeline-item ${side}" data-id="${topic.id}">
