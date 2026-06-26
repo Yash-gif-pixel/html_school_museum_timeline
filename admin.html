@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Portal: Lab Image Creator | CBSE History Museum</title>
+    <link rel="stylesheet" href="timeline.css">
+    <style>
+        .admin-layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 25px;
+            padding: 90px 20px 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+            min-height: 100vh;
+        }
+
+        @media (max-width: 900px) {
+            .admin-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Left Side: Sidebar list */
+        .sidebar {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 140px);
+            position: sticky;
+            top: 90px;
+        }
+
+        .sidebar-header {
+            margin-bottom: 15px;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.2rem;
+            color: #ff9800;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar-search {
+            width: 100%;
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            outline: none;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .sidebar-search::placeholder {
+            color: #888;
+        }
+
+        .sidebar-filter {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(20, 20, 20, 0.9);
+            color: white;
+            outline: none;
+            margin-bottom: 15px;
+            font-size: 13px;
+        }
+
+        .events-list {
+            overflow-y: auto;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-right: 5px;
+        }
+
+        .event-item-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: left;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .event-item-btn:hover {
+            background: rgba(255, 152, 0, 0.1);
+            border-color: rgba(255, 152, 0, 0.3);
+        }
+
+        .event-item-btn.active {
+            background: rgba(255, 152, 0, 0.2);
+            border-color: #ff9800;
+            box-shadow: 0 0 10px rgba(255, 152, 0, 0.2);
+        }
+
+        .event-item-title {
+            font-weight: bold;
+            font-size: 14px;
+            line-height: 1.3;
+        }
+
+        .event-item-meta {
+            font-size: 11px;
+            color: #aaa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-indicator {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .status-fallback {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ccc;
+        }
+
+        .status-custom {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+            border: 1px solid #4caf50;
+        }
+
+        /* Right Side: Creator Panel */
+        .creator-panel {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .welcome-view {
+            text-align: center;
+            padding: 80px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .welcome-view h2 {
+            color: #ff9800;
+            font-size: 1.8rem;
+        }
+
+        .welcome-view p {
+            color: #aaa;
+            max-width: 500px;
+            line-height: 1.6;
+        }
+
+        .creator-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+
+        @media (max-width: 1100px) {
+            .creator-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .preview-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Preview Card */
+        .preview-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .preview-image-box {
+            width: 100%;
+            height: 250px;
+            position: relative;
+            background: #111;
+            overflow: hidden;
+        }
+
+        .preview-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .preview-image.animate {
+            animation: kenburns 20s infinite ease-in-out;
+        }
+
+        .badge-ai-indicator {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: linear-gradient(45deg, #4caf50, #8bc34a);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        .badge-fallback-indicator {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #bbb;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        .preview-details {
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .preview-details .title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #ff9800;
+        }
+
+        .preview-details .sub {
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-bottom: 12px;
+        }
+
+        .preview-metadata {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .meta-pill {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #ddd;
+        }
+
+        /* Form fields */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #ff9800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            border-color: #ff9800;
+        }
+
+        textarea.form-input {
+            height: 100px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        /* Generation modes selectors */
+        .mode-selectors {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .mode-option {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .mode-option:hover {
+            background: rgba(255, 152, 0, 0.05);
+            border-color: rgba(255, 152, 0, 0.3);
+        }
+
+        .mode-option.active {
+            background: rgba(255, 152, 0, 0.15);
+            border-color: #ff9800;
+            box-shadow: 0 0 10px rgba(255, 152, 0, 0.15);
+        }
+
+        .mode-option .icon {
+            font-size: 1.3rem;
+        }
+
+        .mode-option .title {
+            font-weight: bold;
+            font-size: 11px;
+            color: white;
+        }
+
+        .mode-option .sub {
+            font-size: 9px;
+            color: #aaa;
+        }
+
+        /* Actions */
+        .actions-row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn-primary {
+            flex: 2;
+            background: #ff9800;
+            color: #1a1a2e;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #ffb74d;
+            box-shadow: 0 0 15px rgba(255, 152, 0, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:disabled {
+            background: #555;
+            color: #888;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: white;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Progress terminal */
+        .terminal-box {
+            background: #080810;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            height: 120px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            color: #a5d6a7;
+        }
+
+        .terminal-box .error-log {
+            color: #ef5350;
+        }
+
+        .terminal-box .info-log {
+            color: #ffb74d;
+        }
+
+        .doc-panel {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            border: 1px dashed rgba(255, 255, 255, 0.15);
+            padding: 20px;
+        }
+
+        .doc-panel h3 {
+            color: #ff9800;
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .doc-panel ul {
+            padding-left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+            color: #ccc;
+            line-height: 1.5;
+        }
+
+        .doc-panel code {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #ffe0b2;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="mode-toggle-bar">
+        <div class="logo">🏛️ CBSE HISTORY MUSEUM <span>Teacher Lab Panel</span></div>
+        <div class="mode-buttons">
+            <a href="index.html" class="mode-btn">📅 TIMELINE VIEW</a>
+            <a href="admin.html" class="mode-btn active">👨‍🏫 TEACHER PORTAL</a>
+            <a href="3d.html" class="mode-btn">🎮 3D TOUR</a>
+        </div>
+    </div>
+
+    <div class="admin-layout">
+        <!-- Left: Event Selector Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>📁 Select History Event</h2>
+                <input type="text" id="eventSearch" class="sidebar-search" placeholder="🔍 Filter list by title...">
+                <select id="gradeFilter" class="sidebar-filter">
+                    <option value="all">📚 All Grades</option>
+                    <option value="Grade 6">📘 Grade 6</option>
+                    <option value="Grade 7">📙 Grade 7</option>
+                    <option value="Grade 8">📕 Grade 8</option>
+                    <option value="Grade 9">📗 Grade 9</option>
+                    <option value="Grade 10">📓 Grade 10</option>
+                </select>
+            </div>
+            
+            <div class="events-list" id="eventsListContainer">
+                <div style="text-align: center; color: #888; padding: 20px;">Loading events...</div>
+            </div>
+        </aside>
+
+        <!-- Right: Generator Panel -->
+        <main class="creator-panel" id="creatorPanel">
+            <div class="welcome-view" id="welcomeView">
+                <h2>👨‍🏫 Welcome to the Computer Lab Image Generator Portal</h2>
+                <p>This workspace is designed to allow teachers to customize, generate, and animate illustrations for any of the 187 curriculum events using stable diffusion AI models.</p>
+                <p style="font-size: 13px;">Select an event from the left sidebar to generate images directly on the lab server using Fooocus.</p>
+            </div>
+
+            <div id="editorContent" style="display: none;">
+                <div class="creator-grid">
+                    <!-- Column 1: Live Preview -->
+                    <section class="preview-column">
+                        <div class="preview-card">
+                            <div id="imageStatusBadge" class="badge-fallback-indicator">CLOCK FALLBACK</div>
+                            <div class="preview-image-box">
+                                <img id="currentImagePreview" src="images/history_fallback.gif" class="preview-image animate" alt="Preview Image">
+                            </div>
+                            <div class="preview-details">
+                                <div id="previewTitle" class="title">Event Title</div>
+                                <div id="previewSubtitle" class="sub">Subtitle | Chapter Info</div>
+                                <div class="preview-metadata">
+                                    <span id="previewGrade" class="meta-pill">Grade 6</span>
+                                    <span id="previewYear" class="meta-pill">c. 3000 BCE</span>
+                                    <span id="previewLocation" class="meta-pill">Location</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Details Page view -->
+                        <a id="liveLinkBtn" href="#" target="_blank" class="btn-secondary" style="text-align: center; text-decoration: none;">
+                            👁️ View Live in Museum Details
+                        </a>
+
+                        <div class="doc-panel">
+                            <h3>⚡ How to set up Fooocus in your Lab</h3>
+                            <ul>
+                                <li>Ensure the Fooocus server is running on the lab network (typically: <code>http://127.0.0.1:7865</code>).</li>
+                                <li>Make sure API access is enabled. If you use a customized Fooocus API server wrapper, specify the host IP in the form.</li>
+                                <li>Use **Cloud Mode (Pollinations)** to test and play without running Fooocus locally.</li>
+                                <li>The server will automatically crop, downscale, compile a high-quality Ken Burns panning motion GIF, and update <code>events_data.json</code> instantly!</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- Column 2: Generator controls -->
+                    <section class="form-column">
+                        <div class="form-group">
+                            <label>1. Prompt Generator</label>
+                            <textarea id="promptInput" class="form-input" placeholder="Type image prompt..."></textarea>
+                            <span style="font-size: 11px; color: #888;">Feel free to customize the historical setting, color palette, or artistic style (e.g. oil painting, ancient sculpture, cinematic).</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label>2. Image Generator Mode</label>
+                            <div class="mode-selectors">
+                                <div class="mode-option active" data-mode="fooocus">
+                                    <span class="icon">💻</span>
+                                    <span class="title">Fooocus Local</span>
+                                    <span class="sub">Lab Server (Gradio)</span>
+                                </div>
+                                <div class="mode-option" data-mode="pollinations">
+                                    <span class="icon">☁️</span>
+                                    <span class="title">Pollinations</span>
+                                    <span class="sub">Cloud (No GPU needed)</span>
+                                </div>
+                                <div class="mode-option" data-mode="procedural">
+                                    <span class="icon">🎴</span>
+                                    <span class="title">Procedural</span>
+                                    <span class="sub">Text Display Card</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>3. Animation Effect</label>
+                            <select id="animationEffect" class="form-input">
+                                <option value="auto" selected>✨ Auto-Detect (Based on Image Content)</option>
+                                <option value="kenburns">🎬 Ken Burns (Zoom & Pan)</option>
+                                <option value="fire">🔥 Campfire Burn (Flickering & Sparks)</option>
+                                <option value="wheel">🌀 Spinning Wheel (Rotation)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="hostUrlGroup">
+                            <label>4. Local Fooocus Server URL</label>
+                            <input type="text" id="hostUrl" class="form-input" value="http://127.0.0.1:7865">
+                        </div>
+
+                        <div class="form-group">
+                            <label>5. Compilation Console</label>
+                            <div class="terminal-box" id="terminalLogs">
+                                <div>Console ready. Select generating method and click submit.</div>
+                            </div>
+                        </div>
+
+                        <div class="actions-row">
+                            <button id="btnGenerate" class="btn-primary">
+                                🎨 Generate Animated GIF
+                            </button>
+                            <button id="btnReset" class="btn-secondary" style="border-color: #ef5350; color: #ef5350;">
+                                🔄 Reset to Default
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let allEvents = [];
+        let selectedEvent = null;
+        let currentMode = "fooocus";
+
+        // Load all events from server
+        async function fetchEvents() {
+            try {
+                const res = await fetch("/api/events");
+                allEvents = await res.json();
+                renderEventsList();
+            } catch (err) {
+                console.error("Failed to load events:", err);
+                document.getElementById("eventsListContainer").innerHTML = 
+                    `<div style="color: #ef5350; text-align: center; padding: 20px;">Failed to connect to local server backend. Make sure server.py is running.</div>`;
+            }
+        }
+
+        // Render Sidebar List
+        function renderEventsList() {
+            const container = document.getElementById("eventsListContainer");
+            const searchVal = document.getElementById("eventSearch").value.toLowerCase();
+            const gradeVal = document.getElementById("gradeFilter").value;
+
+            let filtered = allEvents;
+
+            if (gradeVal !== "all") {
+                filtered = filtered.filter(e => e.grade === gradeVal || e.grade.includes(gradeVal.replace("Grade ", "")));
+            }
+
+            if (searchVal.trim() !== "") {
+                filtered = filtered.filter(e => 
+                    e.title.toLowerCase().includes(searchVal) || 
+                    e.subtitle.toLowerCase().includes(searchVal) ||
+                    e.era.toLowerCase().includes(searchVal)
+                );
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: #666; padding: 20px;">No events match your filters</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(event => {
+                const isCustom = event.is_ai_image && event.image !== "images/history_fallback.gif";
+                const badgeClass = isCustom ? "status-custom" : "status-fallback";
+                const badgeText = isCustom ? "CUSTOM GIF" : "CLOCK FALLBACK";
+                const isActive = selectedEvent && selectedEvent.id === event.id ? "active" : "";
+
+                return `
+                    <div class="event-item-btn ${isActive}" onclick="selectEvent(${event.id})">
+                        <div class="event-item-title">${escapeHtml(event.title)}</div>
+                        <div class="event-item-meta">
+                            <span>📅 ${escapeHtml(event.year)}</span>
+                            <span class="status-indicator ${badgeClass}">${badgeText}</span>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function escapeHtml(str) {
+            return String(str || "").replace(/[&<>"']/g, m => ({
+                "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+            }[m]));
+        }
+
+        // Handle Event Selection
+        function selectEvent(id) {
+            selectedEvent = allEvents.find(e => e.id === id);
+            
+            // Highlight selected in sidebar
+            renderEventsList();
+
+            // Hide welcome, show editor
+            document.getElementById("welcomeView").style.display = "none";
+            document.getElementById("editorContent").style.display = "block";
+
+            // Populate preview details
+            document.getElementById("previewTitle").textContent = selectedEvent.title;
+            document.getElementById("previewSubtitle").textContent = selectedEvent.subtitle;
+            document.getElementById("previewGrade").textContent = selectedEvent.grade;
+            document.getElementById("previewYear").textContent = selectedEvent.year;
+            document.getElementById("previewLocation").textContent = `📍 ${selectedEvent.location}`;
+            
+            const previewImg = document.getElementById("currentImagePreview");
+            // Set image with cache-buster to force reload when updated
+            previewImg.src = selectedEvent.image + "?cb=" + new Date().getTime();
+            
+            // Badge
+            const badge = document.getElementById("imageStatusBadge");
+            if (selectedEvent.is_ai_image && selectedEvent.image !== "images/history_fallback.gif") {
+                badge.className = "badge-ai-indicator";
+                badge.textContent = "CUSTOM GIF MOTION";
+            } else {
+                badge.className = "badge-fallback-indicator";
+                badge.textContent = "CLOCK FALLBACK";
+            }
+
+            // Live link
+            document.getElementById("liveLinkBtn").href = `detail.html?id=${selectedEvent.id}`;
+
+            // Populate default prompt template
+            let cause_text = selectedEvent.cause_effect || "";
+            cause_text = cause_text.replace("Cause & effect details not available.", "").trim();
+            const clean_cause = cause_text.substring(0, 100);
+            
+            const defaultPrompt = `A historical illustration representing ${selectedEvent.title}. ${clean_cause} Era: ${selectedEvent.era}, Year: ${selectedEvent.year}. Dramatic lighting, oil painting illustration style, highly detailed, masterwork.`;
+            document.getElementById("promptInput").value = defaultPrompt;
+
+            // Default to smart auto-detection
+            document.getElementById("animationEffect").value = "auto";
+
+            // Clear terminal
+            document.getElementById("terminalLogs").innerHTML = `<div>Selected event ${selectedEvent.id}: "${selectedEvent.title}"</div>`;
+        }
+
+        // Log to terminal box
+        function logToTerminal(message, type = "success") {
+            const box = document.getElementById("terminalLogs");
+            const div = document.createElement("div");
+            if (type === "error") {
+                div.className = "error-log";
+            } else if (type === "info") {
+                div.className = "info-log";
+            }
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        // Mode toggling
+        document.querySelectorAll(".mode-option").forEach(opt => {
+            opt.addEventListener("click", () => {
+                document.querySelectorAll(".mode-option").forEach(el => el.classList.remove("active"));
+                opt.classList.add("active");
+                currentMode = opt.dataset.mode;
+
+                const hostGroup = document.getElementById("hostUrlGroup");
+                if (currentMode === "fooocus") {
+                    hostGroup.style.display = "flex";
+                } else {
+                    hostGroup.style.display = "none";
+                }
+                logToTerminal(`Switched mode to ${currentMode.toUpperCase()}`, "info");
+            });
+        });
+
+        // Trigger Generator
+        document.getElementById("btnGenerate").addEventListener("click", async () => {
+            if (!selectedEvent) return;
+
+            const prompt = document.getElementById("promptInput").value.trim();
+            const host = document.getElementById("hostUrl").value.trim();
+            
+            if (prompt === "") {
+                alert("Please write a prompt.");
+                return;
+            }
+
+            const btn = document.getElementById("btnGenerate");
+            btn.disabled = true;
+            btn.textContent = "⌛ Compiling GIF...";
+
+            logToTerminal(`Starting generation process (Mode: ${currentMode.toUpperCase()})...`, "info");
+            logToTerminal(`Prompt: "${prompt}"`, "info");
+            
+            if (currentMode === "fooocus") {
+                logToTerminal(`Targeting Fooocus Local Server: ${host}`, "info");
+            }
+
+            try {
+                const response = await fetch("/api/generate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        id: selectedEvent.id,
+                        prompt: prompt,
+                        mode: currentMode,
+                        host: host,
+                        effect: document.getElementById("animationEffect").value
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    const detectedStr = {
+                        "fire": "🔥 Campfire Burn (Flickering & Sparks)",
+                        "wheel": "🌀 Spinning Wheel (Rotation)",
+                        "kenburns": "🎬 Ken Burns (Zoom & Pan)"
+                    }[data.detected_effect] || data.detected_effect;
+                    
+                    logToTerminal(`GIF generation successful! File saved to: ${data.image_path}`);
+                    logToTerminal(`Auto-detected animation effect applied: ${detectedStr}`, "info");
+                    logToTerminal(`Timeline JSON database has been updated automatically.`);
+                    
+                    // Reload event details
+                    selectedEvent.image = data.image_path;
+                    selectedEvent.is_ai_image = true;
+                    
+                    // Force refresh preview image
+                    const previewImg = document.getElementById("currentImagePreview");
+                    previewImg.src = data.image_path + "?cb=" + new Date().getTime();
+                    
+                    const badge = document.getElementById("imageStatusBadge");
+                    badge.className = "badge-ai-indicator";
+                    badge.textContent = "CUSTOM GIF MOTION";
+
+                    // Update local event object in array
+                    const idx = allEvents.findIndex(e => e.id === selectedEvent.id);
+                    if (idx !== -1) {
+                        allEvents[idx].image = data.image_path;
+                        allEvents[idx].is_ai_image = true;
+                    }
+                    renderEventsList();
+                } else {
+                    logToTerminal(`Error: ${data.message || 'Unknown server error'}`, "error");
+                }
+            } catch (err) {
+                console.error("Generator request failed:", err);
+                logToTerminal(`Connection Error: Server did not respond. Check backend server logs.`, "error");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "🎨 Generate Animated GIF";
+            }
+        });
+
+        // Reset to clock fallback
+        document.getElementById("btnReset").addEventListener("click", async () => {
+            if (!selectedEvent) return;
+
+            if (!confirm(`Are you sure you want to reset "${selectedEvent.title}" back to the default clock fallback? This will remove the custom GIF.`)) {
+                return;
+            }
+
+            const btn = document.getElementById("btnReset");
+            btn.disabled = true;
+
+            logToTerminal(`Resetting event ${selectedEvent.id} back to fallback...`, "info");
+
+            try {
+                const response = await fetch("/api/reset_event", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: selectedEvent.id })
+                });
+
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    logToTerminal(`Event reset successful.`);
+                    
+                    selectedEvent.image = "images/history_fallback.gif";
+                    selectedEvent.is_ai_image = false;
+                    
+                    const previewImg = document.getElementById("currentImagePreview");
+                    previewImg.src = "images/history_fallback.gif";
+                    
+                    const badge = document.getElementById("imageStatusBadge");
+                    badge.className = "badge-fallback-indicator";
+                    badge.textContent = "CLOCK FALLBACK";
+
+                    const idx = allEvents.findIndex(e => e.id === selectedEvent.id);
+                    if (idx !== -1) {
+                        allEvents[idx].image = "images/history_fallback.gif";
+                        allEvents[idx].is_ai_image = false;
+                    }
+                    renderEventsList();
+                } else {
+                    logToTerminal(`Error: ${data.message || 'Unknown error during reset'}`, "error");
+                }
+            } catch (err) {
+                logToTerminal(`Connection Error: Reset request failed.`, "error");
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        // Setup search/filter events
+        document.getElementById("eventSearch").addEventListener("input", renderEventsList);
+        document.getElementById("gradeFilter").addEventListener("change", renderEventsList);
+
+        // Fetch initial list
+        fetchEvents();
+    </script>
+</body>
+</html>
