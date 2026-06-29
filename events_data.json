@@ -35,8 +35,8 @@
         "location": "Corridor",
         "grade": "Grade 6",
         "color": "#4caf50",
-        "image": "assets/generated/gifs/event_3_1782626991.gif",
-        "is_ai_image": true
+        "image": "images/history_fallback.gif",
+        "is_ai_image": false
     },
     {
         "id": 4,
@@ -529,8 +529,8 @@
         "location": "Classroom 7C",
         "grade": "Grade 7",
         "color": "#ff9800",
-        "image": "images/history_fallback.gif",
-        "is_ai_image": false
+        "image": "assets/generated/gifs/event_41_1782740877.gif",
+        "is_ai_image": true
     },
     {
         "id": 42,
