@@ -737,7 +737,56 @@
     </main>
 
     <script>
-        const EVENTS_JSON_URL = "/api/events";
+        const PRAGAMENT_URL = "https://staticapis.pragament.com/lms/cbse/topic-timeline.json";
+        const IMAGE_OVERRIDES_URL = "/api/image-overrides";
+
+        const ERA_COLORS = {
+            "Prehistory": "#8bc34a", "Ancient": "#cddc39", "Ancient India": "#8bc34a",
+            "Global Trade": "#ffeb3b", "Medieval India": "#ff9800", "Mughal Empire": "#9c27b0",
+            "Colonial India": "#2196f3", "Social Reform": "#00bcd4",
+            "Indian Nationalism": "#e91e63", "World History": "#3f51b5"
+        };
+        const GRADE_COLORS = {
+            "Grade 6": "#4caf50", "Grade 7": "#ff9800", "Grade 8": "#2196f3",
+            "Grade 9": "#3f51b5", "Grade 10": "#e91e63"
+        };
+
+        function processRawData(data, imageOverrides = {}) {
+            const subtopics = data?.timeline?.subtopics || [];
+            return subtopics.map((item, index) => {
+                const eventId = index + 1;
+                const subtopicName = item.subtopic_name || item.topic_name || "Untitled topic";
+                const topicName = item.topic_name || "";
+                const chapterName = item.chapter_name || "";
+                const subtitle = [topicName, chapterName].filter(Boolean).join(" | ");
+                let grade = String(item.grade || "").trim();
+                if (grade && !grade.toLowerCase().startsWith("grade")) grade = `Grade ${grade}`;
+                else if (!grade) grade = "Grade";
+                const location = item.display_location || item.location || item.corridor_classroom_position || "Location not specified";
+                const causeEffect = item.cause_effect || "Cause & effect details not available.";
+                const color = ERA_COLORS[chapterName] || GRADE_COLORS[grade] || "#ff9800";
+                const override = imageOverrides[eventId] || {};
+                const imgSrc = override.image || item.image_url || item.image || item.gif_url || item.thumbnail_url || "";
+                const isAi = override.is_ai_image ?? Boolean(imgSrc);
+                return {
+                    id: eventId, title: subtopicName, topic_name: topicName, subtitle,
+                    year: item.year_period || "Period not specified",
+                    era: item.era || chapterName || "Timeline",
+                    cause_effect: causeEffect, location,
+                    geo_location: item.location || "",
+                    panel_position: item.corridor_classroom_position || "",
+                    grade, color, image: imgSrc, is_ai_image: isAi,
+                    event_type: item.event_type || "", theme: item.theme || "", icon: item.icon || "",
+                    people_involved: item.people_involved || [], organizations: item.organizations || [],
+                    cause: item.cause || "", what_happened: item.what_happened || "",
+                    immediate_effect: item.immediate_effect || "", long_term_impact: item.long_term_impact || "",
+                    keywords: item.keywords || [], vocabulary: item.vocabulary || [],
+                    did_you_know: item.did_you_know || "", think_about_it: item.think_about_it || "",
+                    quiz_question: item.quiz_question || "", quiz_answer: item.quiz_answer || "",
+                    exam_importance: item.exam_importance || ""
+                };
+            });
+        }
 
         function escapeHtml(value) {
             return String(value ?? "").replace(/[&<>"']/g, char => ({
@@ -768,12 +817,18 @@
             }
 
             try {
-                const response = await fetch(EVENTS_JSON_URL, { cache: "no-store" });
-                if (!response.ok) {
-                    throw new Error(`Failed to load ${EVENTS_JSON_URL} status ${response.status}`);
+                const [dataResponse, overridesResponse] = await Promise.all([
+                    fetch(PRAGAMENT_URL, { cache: "no-store" }),
+                    fetch(IMAGE_OVERRIDES_URL, { cache: "no-store" }).catch(() => null)
+                ]);
+
+                if (!dataResponse.ok) {
+                    throw new Error(`Failed to load data: ${dataResponse.status}`);
                 }
 
-                const allTopics = await response.json();
+                const rawData = await dataResponse.json();
+                const imageOverrides = overridesResponse?.ok ? await overridesResponse.json() : {};
+                const allTopics = processRawData(rawData, imageOverrides);
                 const currentEventIndex = allTopics.findIndex(e => e.id === targetId);
 
                 if (currentEventIndex === -1) {
@@ -879,18 +934,34 @@
                 </div>
             `;
 
+            // Determine sequential rotation index
+            let rotIndex = parseInt(localStorage.getItem('rotationIndex') || '0');
+            localStorage.setItem('rotationIndex', (rotIndex + 1).toString());
+
+            const getRotatedValue = (field) => {
+                if (Array.isArray(field) && field.length > 0) {
+                    return field[rotIndex % field.length];
+                }
+                return field;
+            };
+
+            const currentDidYouKnow = getRotatedValue(event.did_you_know);
+            const currentThinkAboutIt = getRotatedValue(event.think_about_it);
+            const currentQuizQuestion = getRotatedValue(event.quiz_question);
+            const currentQuizAnswer = getRotatedValue(event.quiz_answer);
+
             // Did you know & Think about it — always shown
             const extraBlocksHtml = `
                 <div class="did-you-know">
                     <h4>💡 Did You Know?</h4>
-                    ${event.did_you_know
-                        ? `<p>${escapeHtml(event.did_you_know)}</p>`
+                    ${currentDidYouKnow
+                        ? `<p>${escapeHtml(currentDidYouKnow)}</p>`
                         : `<p class="empty-placeholder">Not available yet</p>`}
                 </div>
                 <div class="think-about-it">
                     <h4>🤔 Think About It</h4>
-                    ${event.think_about_it
-                        ? `<p>${escapeHtml(event.think_about_it)}</p>`
+                    ${currentThinkAboutIt
+                        ? `<p>${escapeHtml(currentThinkAboutIt)}</p>`
                         : `<p class="empty-placeholder">Not available yet</p>`}
                 </div>
             `;
@@ -898,12 +969,12 @@
             // Quiz — always shown
             const quizHtml = `
                 <div class="quiz-container">
-                    ${event.quiz_question
-                        ? `<div class="quiz-question">🎯 Quick Quiz: ${escapeHtml(event.quiz_question)}</div>`
+                    ${currentQuizQuestion
+                        ? `<div class="quiz-question">🎯 Quick Quiz: ${escapeHtml(currentQuizQuestion)}</div>`
                         : `<div class="quiz-question" style="opacity:0.5;">🎯 Quick Quiz: <em>Not available yet</em></div>`}
-                    ${(event.quiz_question && event.quiz_answer)
+                    ${(currentQuizQuestion && currentQuizAnswer)
                         ? `<div class="quiz-answer-container" onclick="this.classList.toggle('revealed')">
-                               <div class="quiz-answer">${escapeHtml(event.quiz_answer)}</div>
+                               <div class="quiz-answer">${escapeHtml(currentQuizAnswer)}</div>
                                <div class="quiz-overlay">Tap to reveal answer 👀</div>
                            </div>`
                         : `<div class="quiz-answer-container"><div class="quiz-answer empty-placeholder">Answer coming soon</div></div>`}
@@ -985,10 +1056,11 @@
                                     <span class="label">👥 Key People</span>
                                     <span class="val">${event.people_involved && event.people_involved.length > 0 ? escapeHtml(event.people_involved.join(", ")) : '<em class="empty-placeholder">Not available yet</em>'}</span>
                                 </div>
+                                ${event.organizations && event.organizations.length > 0 ? `
                                 <div class="badge-card">
                                     <span class="label">🏛️ Organizations</span>
-                                    <span class="val">${event.organizations && event.organizations.length > 0 ? escapeHtml(event.organizations.join(", ")) : '<em class="empty-placeholder">Not available yet</em>'}</span>
-                                </div>
+                                    <span class="val">${escapeHtml(event.organizations.join(", "))}</span>
+                                </div>` : ""}
                             </div>
                         </div>
 
