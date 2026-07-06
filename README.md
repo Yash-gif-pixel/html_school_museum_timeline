@@ -1,4 +1,4 @@
-# 🏛️ CBSE School History Museum: AI-Powered Interactive Timeline
+# 🏛️ CBSE School History Museum: AI-Powered Interactive Timeline1
 
 An interactive, high-fidelity digital museum timeline website designed to display historical events from the CBSE Social Science curriculum (Grades 6–10) with immersive visual storytelling. The project features an **AI Creator Studio**, content-based AI illustrations, unique sharing URLs, scannable QR codes, and a 3D virtual tour.
 
