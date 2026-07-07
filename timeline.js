@@ -135,18 +135,27 @@ async function loadTimelineData() {
     renderTimelineMessage("Loading timeline data...", true);
 
     try {
-        // Fetch from Pragament and image overrides in parallel
-        const [dataResponse, overridesResponse] = await Promise.all([
-            fetch(PRAGAMENT_URL, { cache: "no-store" }),
-            fetch(IMAGE_OVERRIDES_URL, { cache: "no-store" }).catch(() => null)
-        ]);
+        // Check sessionStorage cache first for instant load
+        const cached = sessionStorage.getItem("pragamentCache");
+        let rawData;
 
-        if (!dataResponse.ok) {
-            throw new Error(`Failed to load data from Pragament: ${dataResponse.status}`);
+        if (cached) {
+            rawData = JSON.parse(cached);
+        } else {
+            const dataResponse = await fetch(PRAGAMENT_URL, { cache: "no-store" });
+            if (!dataResponse.ok) {
+                throw new Error(`Failed to load data from Pragament: ${dataResponse.status}`);
+            }
+            rawData = await dataResponse.json();
+            sessionStorage.setItem("pragamentCache", JSON.stringify(rawData));
         }
 
-        const rawData = await dataResponse.json();
-        const imageOverrides = overridesResponse?.ok ? await overridesResponse.json() : {};
+        // Fetch image overrides (fast, local server)
+        let imageOverrides = {};
+        try {
+            const overridesResponse = await fetch(IMAGE_OVERRIDES_URL, { cache: "no-store" });
+            if (overridesResponse.ok) imageOverrides = await overridesResponse.json();
+        } catch (_) {}
 
         allTopics = processRawData(rawData, imageOverrides);
 
@@ -162,6 +171,13 @@ async function loadTimelineData() {
         }
 
         renderTimelineView("all", "");
+
+        // Restore scroll position if returning from detail page
+        const savedPos = sessionStorage.getItem("timelineScrollPos");
+        if (savedPos) {
+            sessionStorage.removeItem("timelineScrollPos");
+            setTimeout(() => window.scrollTo({ top: parseInt(savedPos), behavior: "instant" }), 50);
+        }
     } catch (error) {
         console.error("Failed to load timeline data:", error);
         renderTimelineMessage("Unable to load timeline data. Please check your internet connection.");
@@ -301,6 +317,8 @@ function initTimelineView() {
             if (!item) return;
 
             const id = parseInt(item.dataset.id, 10);
+            // Save scroll position before navigating to detail page
+            sessionStorage.setItem("timelineScrollPos", window.scrollY);
             window.location.href = `detail.html?id=${id}`;
         });
     }

@@ -2,7 +2,6 @@ import os
 import json
 import uuid
 import asyncio
-import urllib.request
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
 from fastapi.staticfiles import StaticFiles
@@ -93,7 +92,8 @@ async def health():
         "status": "healthy",
         "gpu": gpu,
         "fooocus_status": "online" if is_online else "offline",
-        "fooocus_url": config.fooocus_url
+        "fooocus_url": config.fooocus_url,
+        "data_source": f"Pragament → {PRAGAMENT_API_URL} (AI overrides from {EVENTS_DATA_FILE})"
     }
 
 @app.post("/generate-image")
@@ -186,7 +186,7 @@ async def get_history(limit: int = 100):
 
 # --- EVENT & TIMELINE DB METADATA ENDPOINTS ---
 
-API_URL = "https://staticapis.pragament.com/lms/cbse/topic-timeline.json"
+PRAGAMENT_API_URL = "https://staticapis.pragament.com/lms/cbse/topic-timeline.json"
 
 ERA_COLORS = {
     "Prehistory": "#8bc34a",
@@ -209,127 +209,24 @@ GRADE_COLORS = {
     "Grade 10": "#e91e63"
 }
 
-@app.get("/api/events")
-async def get_events():
-    try:
-        def fetch_api():
-            with urllib.request.urlopen(API_URL) as response:
-                return json.loads(response.read().decode())
-                
-        loop = asyncio.get_running_loop()
-        data = await loop.run_in_executor(None, fetch_api)
-        subtopics = data.get("timeline", {}).get("subtopics", [])
-        if not subtopics:
-            raise Exception("No subtopics in API timeline")
-
-        local_override_map = {}
-        if os.path.exists(EVENTS_DATA_FILE):
-            try:
-                with open(EVENTS_DATA_FILE, "r", encoding="utf-8") as f:
-                    local_events = json.load(f)
-                    for le in local_events:
-                        override = {}
-                        # Always preserve image overrides
-                        if le.get("image") or le.get("is_ai_image"):
-                            override["image"] = le.get("image", "")
-                            override["is_ai_image"] = le.get("is_ai_image", False)
-                        # Preserve any manually enriched fields stored locally
-                        enriched_fields = [
-                            "people_involved", "organizations", "cause", "what_happened",
-                            "immediate_effect", "long_term_impact",
-                            "keywords",
-                            "vocabulary", "did_you_know", "think_about_it",
-                            "quiz_question", "quiz_answer", "exam_importance",
-                            "event_type", "theme", "era", "icon"
-                        ]
-                        for field in enriched_fields:
-                            if field in le and le[field]:
-                                override[field] = le[field]
-                        if override:
-                            local_override_map[le["id"]] = override
-            except Exception:
-                pass
-
-        processed_events = []
-        for index, item in enumerate(subtopics):
-            event_id = index + 1
-            subtopic_name = item.get("subtopic_name") or item.get("topic_name") or "Untitled topic"
-            topic_name = item.get("topic_name") or ""
-            chapter_name = item.get("chapter_name") or ""
-
-            subtitle_parts = [part for part in [topic_name, chapter_name] if part]
-            subtitle = " | ".join(subtitle_parts)
-
-            grade = str(item.get("grade") or "").strip()
-            if grade and not grade.lower().startswith("grade"):
-                grade = f"Grade {grade}"
-            elif not grade:
-                grade = "Grade"
-
-            location = item.get("display_location") or item.get("location") or item.get("corridor_classroom_position") or "Location not specified"
-            cause_effect = item.get("cause_effect") or "Cause & effect details not available."
-
-            color = ERA_COLORS.get(chapter_name) or GRADE_COLORS.get(grade) or "#ff9800"
-
-            local_override = local_override_map.get(event_id, {})
-            img_src = (
-                local_override.get("image") or
-                item.get("image_url") or
-                item.get("image") or
-                item.get("gif_url") or
-                item.get("thumbnail_url") or
-                ""
-            )
-            is_ai = local_override.get("is_ai_image", bool(img_src))
-
-            event = {
-                # --- existing fields ---
-                "id": event_id,
-                "title": subtopic_name,
-                "topic_name": topic_name,
-                "subtitle": subtitle,
-                "year": item.get("year_period") or "Period not specified",
-                "era": item.get("era") or chapter_name or "Timeline",
-                "cause_effect": cause_effect,
-                "location": location,
-                "geo_location": item.get("location") or "",
-                "panel_position": item.get("corridor_classroom_position") or "",
-                "grade": grade,
-                "color": color,
-                "image": img_src,
-                "is_ai_image": is_ai,
-
-                # --- new enriched fields (local override takes priority over API) ---
-                "event_type":            local_override.get("event_type")            or item.get("event_type") or "",
-                "theme":                 local_override.get("theme")                 or item.get("theme") or "",
-                "icon":                  local_override.get("icon")                  or item.get("icon") or "",
-                "people_involved":       local_override.get("people_involved")       or item.get("people_involved") or [],
-                "organizations":         local_override.get("organizations")         or item.get("organizations") or [],
-                "cause":                 local_override.get("cause")                 or item.get("cause") or "",
-                "what_happened":         local_override.get("what_happened")         or item.get("what_happened") or "",
-                "immediate_effect":      local_override.get("immediate_effect")      or item.get("immediate_effect") or "",
-                "long_term_impact":      local_override.get("long_term_impact")      or item.get("long_term_impact") or "",
-                "keywords":              local_override.get("keywords")              or item.get("keywords") or [],
-                "vocabulary":            local_override.get("vocabulary")            or item.get("vocabulary") or [],
-                "did_you_know":          local_override.get("did_you_know")          or item.get("did_you_know") or "",
-                "think_about_it":        local_override.get("think_about_it")        or item.get("think_about_it") or "",
-                "quiz_question":         local_override.get("quiz_question")         or item.get("quiz_question") or "",
-                "quiz_answer":           local_override.get("quiz_answer")           or item.get("quiz_answer") or "",
-                "exam_importance":       local_override.get("exam_importance")       or item.get("exam_importance") or "",
-            }
-            processed_events.append(event)
-
+@app.get("/api/image-overrides")
+async def get_image_overrides():
+    """Returns only the AI-generated image paths from local events_data.json.
+    The frontend fetches base event data directly from Pragament and merges these overrides."""
+    overrides = {}
+    if os.path.exists(EVENTS_DATA_FILE):
         try:
-            with open(EVENTS_DATA_FILE, 'w', encoding='utf-8') as f:
-                json.dump(processed_events, f, indent=4, ensure_ascii=False)
+            with open(EVENTS_DATA_FILE, "r", encoding="utf-8") as f:
+                events = json.load(f)
+                for e in events:
+                    if e.get("image"):
+                        overrides[e["id"]] = {
+                            "image": e["image"],
+                            "is_ai_image": e.get("is_ai_image", False)
+                        }
         except Exception:
             pass
-
-        return processed_events
-
-    except Exception as e:
-        print(f"API fetch failed: {e}")
-        raise HTTPException(status_code=503, detail=f"Unable to fetch data from external API: {str(e)}")
+    return overrides
 
 @app.post("/api/reset_event")
 async def reset_event(req: dict):
@@ -451,6 +348,7 @@ app.mount("/", StaticFiles(directory=".", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
-    # Use standard 8000 port
     print("CBSE HISTORY MUSEUM - AI-POWERED LAB SERVER STARTING...")
+    print(f"DATA SOURCE: Pragament → {PRAGAMENT_API_URL}")
+    print(f"AI IMAGE OVERRIDES: {EVENTS_DATA_FILE}")
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
