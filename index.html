@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>History Museum - Historical Timeline View</title>
-    <link rel="stylesheet" href="timeline.css?v=2">
+    <link rel="stylesheet" href="timeline.css?v=6">
 </head>
 <body>
     <div class="mode-toggle-bar">
@@ -40,13 +40,19 @@
             <button id="resetTimeline" class="nav-btn">🔄 Reset</button>
         </div>
 
+        <!-- Compare Panel -->
+        <div class="compare-panel" id="comparePanel">
+            <div class="compare-panel-label">🔀 Compare Boards:</div>
+            <div class="compare-toggles" id="compareToggles"></div>
+        </div>
+
         <div class="timeline" id="timelineContainer"></div>
         <div class="scroll-indicator" id="scrollToTop">⬆</div>
     </main>
 
 
 
-    <script src="timeline.js?v=2"></script>
+    <script src="timeline.js?v=7"></script>
     <script>
         // Update header with selected curriculum
         const currLabel = localStorage.getItem("curriculumLabel") || "CBSE";
